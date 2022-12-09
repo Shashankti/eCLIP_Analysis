@@ -1,154 +1,74 @@
-library(DEWSeq)
-library(IHW)
-library(tidyverse)
-library(data.table)
-library(ggrepel)
+#MMake plots 
+library(EnhancedVolcano)
+library(ggplot2)
+library(viridis)
+library(cowplot)
 
-count_matrix <- fread('Data/Counts/Counts_matrix_w100s20.txt.gz',stringsAsFactors = F,sep = "\t", header = T)
-count_matrix <- column_to_rownames(count_matrix,'unique_id')
-col_data <- data.frame(type=c('Gal','Gal','Lo','Lo','Norm','Norm'),row.names = colnames(count_matrix))
+E1 <- EnhancedVolcano(as.data.frame(resultRegions),
+                      lab = resultRegions$gene_name,
+                      x='log2FoldChange_mean',
+                      y='padj_mean',
+                      title = 'Norm vs Lo',
+                      pCutoff = 0.1,
+                      FCcutoff = 0.5)
+E1
+EnhancedVolcano(resultWindows,
+                lab=resultWindows$gene_name,
+                x='log2FoldChange',
+                y='padj',
+                pCutoff = 0.1,
+                FCcutoff = 0.5)
 
-annotation_file <- 'Data/Genome/SLWD_w100s20.txt.gz'
+E2 <- EnhancedVolcano(as.data.frame(resultRegions),
+                      lab = resultRegions$gene_name,
+                      x='log2FoldChange_mean',
+                      y='padj_mean',
+                      title = 'Norm vs Gal')
+E2
 
-ddw <- DESeqDataSetFromSlidingWindows(countData = count_matrix,colData = col_data,annotObj = annotation_file,design = ~type)
+E3 <- EnhancedVolcano(as.data.frame(resultRegions),
+                      lab = resultRegions$gene_name,
+                      x='log2FoldChange_mean',
+                      y='padj_mean',
+                      title = 'Gal vs Lo')
 
-ddw <- estimateSizeFactors(ddw)
-sizeFactors(ddw)
+  coord_cartesian(xlim = c(-24,17),ylim = c(0,12.5))
+  
+  
+ggplot(resultWindows[resultWindows$significant==TRUE,],
+       aes(x=gene_type,fill=gene_type))+
+  geom_bar()+
+  theme_cowplot()+
+  scale_fill_viridis(discrete = T)+
+  theme(axis.text.x = element_text(angle=45,hjust=1),
+        legend.position = "none")+
+  xlab("") 
 
-
-keep <- rowSums(counts(ddw)) >= 10
-ddw <- ddw[keep,]
-
-#
-rm(keep)
-gc()
-#
-
-
-ddw_mRNAs <- ddw[rowData(ddw)[,"gene_type"]=="protein_coding",]
-ddw_mRNAs <- estimateSizeFactors(ddw_mRNAs)
-sizeFactors(ddw) <- sizeFactors(ddw_mRNAs)
-sizeFactors(ddw)
-
-
-
-ddw_tmp <- ddw
-ddw_tmp <- estimateDispersions(ddw_tmp,fitType="local",quiet=TRUE)
-ddw_tmp <- nbinomWaldTest(ddw_tmp)
-
-tmp_significant_windows <- 
-  results(ddw_tmp,
-          contrast = c("type", "Norm", "Lo"),
-          tidy = TRUE,
-          filterFun = ihw) %>% 
-  dplyr::filter(padj < 0.05) %>% 
-  .[["row"]]
-rm("ddw_tmp")
-gc()
-
-
-ddw_mRNAs <- ddw_mRNAs[ !rownames(ddw_mRNAs) %in% tmp_significant_windows, ]
-ddw_mRNAs <- estimateSizeFactors(ddw_mRNAs)
-sizeFactors(ddw) <- sizeFactors(ddw_mRNAs)
-rm(list = c("tmp_significant_windows","ddw_mRNAs"))
-gc()
-sizeFactors(ddw)
-
-
-decide_fit <- TRUE
-
-parametric_ddw <- estimateDispersions(ddw,fitType='parametric')
-if(decide_fit){
-  local_ddw <- estimateDispersions(ddw,fitType="local")
+#percentage of significant intercations
+for (i in length(unique(resultWindows$gene_type))){
+  tot_counts[i] = dim(resultWindows[resultWindows$gene_type==unique(resultWindows$gene_type)[i],])[1]
 }
 
-plotDispEsts(parametric_ddw,main="Parametric Fit")
-
-
-
-if(decide_fit){
-  plotDispEsts(local_ddw, main="Local fit")
+for ( i in unique(resultWindows$gene_type)){
+  tot_counts[i] = dim(resultWindows[resultWindows$gene_type==i,])[1]
+  sig_counts[i] = dim(resultWindows[resultWindows$gene_type==i & resultWindows$significant==TRUE,])[1]
 }
+prop_counts <- sig_counts/tot_counts
+prop_counts <- as.data.frame(prop_counts) %>% rownames_to_column("type")
+colnames(prop_counts)[2] <- "prop"
+
+ggplot(prop_counts,aes(x=type,fill=type,y=prop))+
+  geom_bar(stat = "Identity")+
+  theme_cowplot()+
+  scale_fill_viridis(discrete = T)+
+  theme(axis.text.x = element_text(angle=45,hjust = 1),
+        legend.position = "none")+
+  xlab("")+
+  ylab("Proportion of significant")
+#------------------------------------------------------------------------------------------------#
+
+# 
 
 
 
 
-
-
-parametricResid <- na.omit(with(mcols(parametric_ddw),abs(log(dispGeneEst)-log(dispFit))))
-if(decide_fit){
-  localResid <- na.omit(with(mcols(local_ddw),abs(log(dispGeneEst)-log(dispFit))))
-  residDf <- data.frame(residuals=c(parametricResid,localResid),
-                        fitType=c(rep("parametric",length(parametricResid)),
-                                  rep("local",length(localResid))))
-  summary(residDf)
-}
-
-
-if(decide_fit){
-  ggplot(residDf, aes(x = residuals, fill = fitType)) + 
-    scale_fill_manual(values = c("darkred", "darkblue")) + 
-    geom_histogram(alpha = 0.5, position='identity', bins = 100) + theme_bw()
-}
-
-summary(parametricResid)
-if(decide_fit){
-  summary(localResid)
-  if (median(localResid) <= median(parametricResid)){
-    cat("chosen fitType: local")
-    ddw <- local_ddw
-  }else{
-    cat("chosen fitType: parametric")
-    ddw <- parametric_ddw
-  }
-  rm(local_ddw,parametric_ddw,residDf,parametricResid,localResid)
-}else{
-  ddw <- parametric_ddw
-  rm(parametric_ddw)
-}
-
-
-ddw <- estimateDispersions(ddw, fitType = "local", quiet = TRUE)
-ddw <- nbinomWaldTest(ddw)
-plotDispEsts(ddw)
-
-
-#############################33
-#Get results
-resultWindows <- resultsDEWSeq(ddw,
-                               contrast = c("type", "Norm", "Lo"),
-                               tidy = TRUE) %>% as_tibble
-
-resultWindows
-
-resultWindows[,"p_adj_IHW"] <- adj_pvalues(ihw(pSlidingWindows ~ baseMean, 
-                                               data = resultWindows,
-                                               alpha = 0.05,
-                                               nfolds = 10))
-
-result.fixed <- fdrtool::fdrtool(resultWindows$stat,statistic = "normal")
-resultWindows$qvalue <- p.adjust(result.fixed$pval,method = "BH")
-
-
-resultWindows <- resultWindows %>% 
-  mutate(significant = resultWindows$p_adj_IHW < 0.1)
-
-sum(resultWindows$significant)
-
-resultWindows %>%
-  filter(significant) %>% 
-  arrange(desc(log2FoldChange)) %>% 
-  .[["gene_name"]] %>% 
-  unique %>% 
-  head(40)
-colnames(resultWindows)[21] <- "padj"
-resultRegions <- extractRegions(windowRes  = resultWindows,
-                                padjCol    = "padj",
-                                padjThresh = 0.1, 
-                                log2FoldChangeThresh = 0.5) %>% as_tibble
-
-resultRegions$chromosome <- sub("^","chr",resultRegions$chromosome)
-
-toBED(windowRes = resultWindows,
-      regionRes = resultRegions,
-      fileName  = "Data/Counts/Norm_vs_Gal_enrichedWindowsRegions.bed")
