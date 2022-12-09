@@ -1,0 +1,10 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+Data/
+DEWSeq_script.R
+htseq.sh
+meme.sh
+umi_dedup.sh
+CLIP_Seq.Rproj
