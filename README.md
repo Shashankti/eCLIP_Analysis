@@ -6,7 +6,7 @@
 1. Demultiplexing
 2. Trimming and quality checks
 3. Alignment
-4. Peaks
+4. Calling Peaks and motifs
 
 ## Structure
 1. Demux
@@ -14,10 +14,10 @@
 
 2. Analysis_Pipeline
 - Scripts for generating peaks from fastq file as input
-- Requires STAR,samtools,bedtools,piranha,MEME,cutadapt
+- Requires STAR,samtools,bedtools,pureclip,MEME,cutadapt
+- Merge_annotate.sh is used to annotate the peak files and prepare them for RCAS
+- Make_bw.sh is used for generating files for visualizing in IGV
+- 
 
-3. DEWSeq_Scripts
-- Script to prepare input file for DEWSeq
-- Run DEWSeq and generate plots
-- Requires DEWSeq and htseq-clip
-
+3. RScipts
+- Scripts used for post processing and generating plots using RCAS
