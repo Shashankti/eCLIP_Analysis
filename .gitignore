@@ -8,3 +8,9 @@ htseq.sh
 meme.sh
 umi_dedup.sh
 CLIP_Seq.Rproj
+*log
+*.html
+*.RData
+*.Rproj
+*jpeg
+*.tsv
