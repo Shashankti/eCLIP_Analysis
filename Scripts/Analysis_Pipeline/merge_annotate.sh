@@ -5,5 +5,5 @@ F1=$(basename "${i}" | sed "s/_bin.bed//")
 
 done
 
-#bedtools intersect -a - -b ~/CLIP_Seq/Data/Genome/gene_loc_file.bed -wa -wb 
-#❯ bedtools intersect -a Norm_R1_fin.bed -b Norm_R2_fin.bed |  bedtools intersect -a - -b ~/CLIP_Seq/Data/Genome/gene_loc_file.bed -wa -wb | cut -f1,2,3,4,8,9 > Merged_Norm_annotated.bed
+bedtools intersect -a - -b ~/CLIP_Seq/Data/Genome/gene_loc_file.bed -wa -wb 
+bedtools intersect -a Norm_R1_fin.bed -b Norm_R2_fin.bed |  bedtools intersect -a - -b ~/CLIP_Seq/Data/Genome/gene_loc_file.bed -wa -wb | cut -f1,2,3,4,8,9 > Merged_Norm_annotated.bed

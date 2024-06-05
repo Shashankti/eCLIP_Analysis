@@ -14,18 +14,30 @@ do
 SAMPLE=$(echo ${i} | sed "s/_R1.adapt2.fastq//")
 F1=$(basename "${SAMPLE%adapt2.fastq}")
 echo 'L001 alignmnet starts..' && \
-STAR --runMode alignReads --runThreadN 16 \
+
+STAR --runMode alignReads --runThreadN 32 \
 --genomeDir $GENOME \
---readFilesIn ${i} \
-${SAMPLE}_R2.adapt2.fastq \
---outFilterMultimapNmax 2 \
---outFilterMatchNmin 0 \
---outFilterMatchNminOverLread 0 \
---outFilterScoreMinOverLread 0 \
+--readFilesIn $ADAPT2/Merged_Gal_R2_L001_R1.adapt2.fastq $ADAPT2/Merged_Gal_R2_L001_R2.adapt2.fastq \
+--outFilterMultimapNmax 1 \
+--outFilterMatchNmin 15 \
+--outFilterMatchNminOverLread 0.3 \
+--outFilterScoreMinOverLread 0.3 \
 --outFilterMismatchNoverLmax 0.05 \
---outSAMtype BAM Unsorted \
---outReadsUnmapped Fastx \
---outFileNamePrefix $ALIGN/$F1
+--outSAMtype BAM SortedByCoordinate \
+--outFileNamePrefix $ALIGN/genome2 \
+--alignEndsType EndToEnd
+
+STAR --runMode alignReads --runThreadN 32 \
+--genomeDir $GENOME \
+--readFilesIn $REALIGN/Merged_Gal_R2_L001_repeat-unmapped.sorted.R1.fq $REALIGN/Merged_Gal_R2_L001_repeat-unmapped.sorted.R2.fq \
+--outFilterMultimapNmax 1 \
+--outFilterMatchNmin 15 \
+--outFilterMatchNminOverLread 0.3 \
+--outFilterScoreMinOverLread 0.3 \
+--outFilterMismatchNoverLmax 0.05 \
+--outSAMtype BAM SortedByCoordinate \
+--outFileNamePrefix $ALIGN/genome3 \
+--alignEndsType EndToEnd
 done
 echo 'Done alignment'
 ####################################################
